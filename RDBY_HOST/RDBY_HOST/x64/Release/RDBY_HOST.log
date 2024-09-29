@@ -1,0 +1,10 @@
+﻿  main.cpp
+C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(43,19): warning C4476: 'fprintf' : unknown type field character ' ' in format specifier
+C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(43,19): warning C4778: 'fprintf' : unterminated format string '%l\n'
+C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(44,7): warning C4474: 'fprintf' : too many arguments passed for format string
+C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(44,7): message : placeholders and their parameters expect 0 variadic arguments, but 3 were provided
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 8 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  RDBY_HOST.vcxproj -> C:\RDBY\RDBY_HOST\x64\Release\RDBY_HOST.exe

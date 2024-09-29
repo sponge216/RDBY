@@ -1,0 +1,11 @@
+﻿  main.cpp
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.h(32,2): warning C4091: 'typedef ': ignored on left of 'queue' when no variable is declared
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4313: 'fprintf': '%d' in format string conflicts with argument 1 of type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 2 has type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4313: 'fprintf': '%d' in format string conflicts with argument 2 of type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 3 has type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4313: 'fprintf': '%d' in format string conflicts with argument 3 of type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 4 has type 'unsigned char *'
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(51,18): warning C4313: 'fprintf': '%d' in format string conflicts with argument 4 of type 'unsigned char *'
+  RDBY_CLIENT.vcxproj -> C:\RDBY\RDBY_CLIENT\x64\Debug\RDBY_CLIENT.exe
