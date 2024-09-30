@@ -134,53 +134,8 @@ LRESULT __stdcall MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 	if (nCode >= 0)
 	{
 		// the action is valid: HC_ACTION.
-		queue_cell_t cell = { (void*)lParam,wParam,0 };
+		queue_cell_t cell = { (void*)lParam, wParam,0 };
 		pushToQueue(proc_queue, cell);
-		unsigned char buffer[PACKET_SIZE] = { 0 };
-		MSLLHOOKSTRUCT* pMsStruct = (MSLLHOOKSTRUCT*)(lParam);
-
-		LONG tempx = pMsStruct->pt.x;
-		LONG tempy = pMsStruct->pt.y;
-		pMsStruct->pt.x -= first_point->x;
-		pMsStruct->pt.y -= first_point->y;
-		first_point->x = tempx;
-		first_point->y = tempy;
-
-		DWORD flags = MOUSEEVENTF_MOVE; // default event is moving.
-		//fprintf(stdout, "%x", wParam);
-		switch (wParam) {
-		case WM_MOUSEMOVE:
-			flags = MOUSEEVENTF_MOVE;
-			//fprintf(stdout, "MOVE");
-			break;
-		case WM_LBUTTONDOWN:
-			//fprintf(stdout, "LEFT DOWN!");
-			flags = MOUSEEVENTF_LEFTDOWN;
-			break;
-
-		case WM_LBUTTONUP:
-			//fprintf(stdout, "LEFT UP!");
-			flags = MOUSEEVENTF_LEFTUP;
-			break;
-
-		case WM_MOUSEWHEEL:
-			flags = MOUSEEVENTF_WHEEL;
-			break;
-
-		case WM_RBUTTONDOWN:
-			//fprintf(stdout, "RIGHT DOWN!");
-			flags = MOUSEEVENTF_RIGHTDOWN;
-			break;
-
-		case WM_RBUTTONUP:
-			//fprintf(stdout, "RIGHT UP!");
-			flags = MOUSEEVENTF_RIGHTUP;
-			break;
-		}
-
-
-		packetFormatMouse(pMsStruct, buffer, flags);
-		send(connectSocket, (char*)buffer, PACKET_SIZE, 0); // send keystroke.
 
 
 	}
@@ -196,14 +151,7 @@ LRESULT __stdcall KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 		queue_cell_t cell = { (void*)lParam,wParam,0 };
 		pushToQueue(proc_queue, cell);
-		// the action is valid: HC_ACTION.
-		//if (wParam == WM_KEYDOWN) {
-		unsigned char buffer[PACKET_SIZE - 2 * sizeof(DWORD)] = { 0 };
-		KBDLLHOOKSTRUCT* pKbdStruct = (KBDLLHOOKSTRUCT*)(lParam);
-		packetFormatKeyboard(pKbdStruct, buffer);
 
-		send(connectSocket, (char*)buffer, PACKET_SIZE - 2 * sizeof(DWORD), 0); // send keystroke.
-		//}
 	}
 
 	// call the next hook in the hook chain. This is nessecary or your hook chain will break and the hook stops

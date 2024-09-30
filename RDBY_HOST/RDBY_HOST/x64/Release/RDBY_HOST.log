@@ -4,8 +4,8 @@ C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(38,19): warning C4778: 'fprintf' : untermin
 C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(39,7): warning C4474: 'fprintf' : too many arguments passed for format string
 C:\RDBY\RDBY_HOST\RDBY_HOST\main.cpp(39,7): message : placeholders and their parameters expect 0 variadic arguments, but 3 were provided
   Generating code
-  2 of 8 functions (25.0%) were compiled, the rest were copied from previous compilation.
+  0 of 8 functions ( 0.0%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    1 functions had inline decision re-evaluated but remain unchanged
+    0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   RDBY_HOST.vcxproj -> C:\RDBY\RDBY_HOST\x64\Release\RDBY_HOST.exe
