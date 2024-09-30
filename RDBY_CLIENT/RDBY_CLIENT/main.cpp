@@ -8,6 +8,8 @@ SOCKET connectSocket;
 LPPOINT first_point = (LPPOINT)malloc(sizeof(POINT));
 BOOL pos_res = GetCursorPos(first_point);
 
+pqueue proc_queue = (pqueue)malloc(sizeof(queue_t));
+BYTE run = 1;
 
 //Function that takes a KDLLHOOKSTRUCT pointer and fits it into an unsigned char buffer given by pointer
 //Format: type (32) - virtual key code (32) - scan code (32) - flags (32)
@@ -48,11 +50,7 @@ void packetFormatMouse(MSLLHOOKSTRUCT* pMsStruct, unsigned char* buffer, DWORD m
 		buffer[i] = (pMsStruct->mouseData >> (sizeof(char) * 8 * (3 - i % 4))) & 0xff;
 	}
 
-	fprintf(stdout, "%d %d %d %d\n",
-		buffer,
-		buffer + sizeof(DWORD),
-		buffer + 2 * sizeof(DWORD),
-		buffer + 3 * sizeof(DWORD));
+
 }
 //Releases keyboard hook.
 void ReleaseKeyboardHook()
@@ -65,24 +63,103 @@ void ReleaseMouseHook()
 	UnhookWindowsHookEx(_ms_hook);
 }
 
+DWORD WINAPI socket_output_thread(LPVOID data) {
+	unsigned char buffer[PACKET_SIZE] = { 0 };
+	queue_cell_t cell = { 0 };
+	BYTE res = 0;
+	DWORD timeout = 3;
+	while (run) {
+		while (res = popFromQueue(proc_queue, &cell, timeout)) {
+
+		}
+		if (cell.type == 0) {
+			MSLLHOOKSTRUCT* pMsStruct = (MSLLHOOKSTRUCT*)(cell.lParam);
+
+			LONG tempx = pMsStruct->pt.x;
+			LONG tempy = pMsStruct->pt.y;
+			pMsStruct->pt.x -= first_point->x;
+			pMsStruct->pt.y -= first_point->y;
+			first_point->x = tempx;
+			first_point->y = tempy;
+
+			DWORD flags = MOUSEEVENTF_MOVE; // default event is moving.
+			//fprintf(stdout, "%x", wParam);
+			switch (cell.wParam) {
+			case WM_MOUSEMOVE:
+				flags = MOUSEEVENTF_MOVE;
+				//fprintf(stdout, "MOVE");
+				break;
+			case WM_LBUTTONDOWN:
+				//fprintf(stdout, "LEFT DOWN!");
+				flags = MOUSEEVENTF_LEFTDOWN;
+				break;
+
+			case WM_LBUTTONUP:
+				//fprintf(stdout, "LEFT UP!");
+				flags = MOUSEEVENTF_LEFTUP;
+				break;
+
+			case WM_MOUSEWHEEL:
+				flags = MOUSEEVENTF_WHEEL;
+				break;
+
+			case WM_RBUTTONDOWN:
+				//fprintf(stdout, "RIGHT DOWN!");
+				flags = MOUSEEVENTF_RIGHTDOWN;
+				break;
+
+			case WM_RBUTTONUP:
+				//fprintf(stdout, "RIGHT UP!");
+				flags = MOUSEEVENTF_RIGHTUP;
+				break;
+			}
+
+
+			packetFormatMouse(pMsStruct, buffer, flags);
+			send(connectSocket, (char*)buffer, PACKET_SIZE, 0); // send keystroke.
+		}
+		else if (cell.type == 1) {
+			KBDLLHOOKSTRUCT* pKbdStruct = (KBDLLHOOKSTRUCT*)(cell.lParam);
+			packetFormatKeyboard(pKbdStruct, buffer);
+
+			send(connectSocket, (char*)buffer, PACKET_SIZE - 2 * sizeof(DWORD), 0); // send keystroke.
+		}
+	}
+	ExitThread(1);
+	return NULL;
+}
 //Mouse callback function. Called when a keyboard input event is raised.
 LRESULT __stdcall MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode >= 0)
 	{
 		// the action is valid: HC_ACTION.
-
+		queue_cell_t cell = { (void*)lParam,wParam,0 };
+		pushToQueue(proc_queue, cell);
 		unsigned char buffer[PACKET_SIZE] = { 0 };
 		MSLLHOOKSTRUCT* pMsStruct = (MSLLHOOKSTRUCT*)(lParam);
-		UINT msg_id = HIWORD(wParam);
-		DWORD flags = MOUSEEVENTF_MOVE; // default event is moving.
-		switch (msg_id) {
 
+		LONG tempx = pMsStruct->pt.x;
+		LONG tempy = pMsStruct->pt.y;
+		pMsStruct->pt.x -= first_point->x;
+		pMsStruct->pt.y -= first_point->y;
+		first_point->x = tempx;
+		first_point->y = tempy;
+
+		DWORD flags = MOUSEEVENTF_MOVE; // default event is moving.
+		//fprintf(stdout, "%x", wParam);
+		switch (wParam) {
+		case WM_MOUSEMOVE:
+			flags = MOUSEEVENTF_MOVE;
+			//fprintf(stdout, "MOVE");
+			break;
 		case WM_LBUTTONDOWN:
+			//fprintf(stdout, "LEFT DOWN!");
 			flags = MOUSEEVENTF_LEFTDOWN;
 			break;
 
 		case WM_LBUTTONUP:
+			//fprintf(stdout, "LEFT UP!");
 			flags = MOUSEEVENTF_LEFTUP;
 			break;
 
@@ -91,19 +168,16 @@ LRESULT __stdcall MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case WM_RBUTTONDOWN:
+			//fprintf(stdout, "RIGHT DOWN!");
 			flags = MOUSEEVENTF_RIGHTDOWN;
 			break;
 
 		case WM_RBUTTONUP:
+			//fprintf(stdout, "RIGHT UP!");
 			flags = MOUSEEVENTF_RIGHTUP;
 			break;
 		}
-		LONG tempx = pMsStruct->pt.x;
-		LONG tempy = pMsStruct->pt.y;
-		pMsStruct->pt.x -= first_point->x;
-		pMsStruct->pt.y -= first_point->y;
-		first_point->x = tempx;
-		first_point->y = tempy;
+
 
 		packetFormatMouse(pMsStruct, buffer, flags);
 		send(connectSocket, (char*)buffer, PACKET_SIZE, 0); // send keystroke.
@@ -120,14 +194,16 @@ LRESULT __stdcall KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode >= 0)
 	{
+		queue_cell_t cell = { (void*)lParam,wParam,0 };
+		pushToQueue(proc_queue, cell);
 		// the action is valid: HC_ACTION.
-		if (wParam == WM_KEYDOWN) {
-			unsigned char buffer[PACKET_SIZE - 2 * sizeof(DWORD)] = { 0 };
-			KBDLLHOOKSTRUCT* pKbdStruct = (KBDLLHOOKSTRUCT*)(lParam);
-			packetFormatKeyboard(pKbdStruct, buffer);
+		//if (wParam == WM_KEYDOWN) {
+		unsigned char buffer[PACKET_SIZE - 2 * sizeof(DWORD)] = { 0 };
+		KBDLLHOOKSTRUCT* pKbdStruct = (KBDLLHOOKSTRUCT*)(lParam);
+		packetFormatKeyboard(pKbdStruct, buffer);
 
-			send(connectSocket, (char*)buffer, PACKET_SIZE - 2 * sizeof(DWORD), 0); // send keystroke.
-		}
+		send(connectSocket, (char*)buffer, PACKET_SIZE - 2 * sizeof(DWORD), 0); // send keystroke.
+		//}
 	}
 
 	// call the next hook in the hook chain. This is nessecary or your hook chain will break and the hook stops
@@ -157,11 +233,21 @@ void SetMouseHook()
 }
 
 
-DWORD WINAPI socket_output_thread(LPVOID data) {
-	ExitThread(1);
-	return NULL;
-}
 
+
+void firstInteraction() {
+	//TODO: add checks to api calls.
+	//send primary screen ratio
+	//TODO: detect when screen changes.
+	int valread = 0;
+	int width = GetSystemMetrics(SM_CXSCREEN);
+	int height = GetSystemMetrics(SM_CYSCREEN);
+	UINT dpi = GetDpiForSystem();
+	fprintf(stdout, "%d %d %d\n", width, height, dpi);
+	int client_metrics[3] = { width,height, dpi };
+	valread = send(connectSocket, (char*)client_metrics, 3 * sizeof(int), 0);
+
+}
 int main(int argc, char** argv) {
 	/*LONG test = -12345;
 	LONG temp = 0;
@@ -211,7 +297,8 @@ int main(int argc, char** argv) {
 		WSACleanup();
 		return 1;
 	}
-
+	initQueue(proc_queue); // init queue
+	firstInteraction(); // exchange info
 	SetKeyboardHook();
 	SetMouseHook();
 

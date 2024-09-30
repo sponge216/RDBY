@@ -11,7 +11,7 @@
 #include <WinUser.h>
 
 #pragma comment(lib, "Ws2_32.lib")
-#define PORT "8080"
+#define PORT "36542"
 #define BACKLOG 15
 #define MAX_REQ_SIZE 1024
 

@@ -1,0 +1,10 @@
+﻿  main.cpp
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.h(34,2): warning C4091: 'typedef ': ignored on left of 'queue' when no variable is declared
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(81,15): warning C4244: 'initializing': conversion from 'WPARAM' to 'UINT', possible loss of data
+C:\RDBY\RDBY_CLIENT\RDBY_CLIENT\main.cpp(181,42): warning C4838: conversion from 'UINT' to 'int' requires a narrowing conversion
+  Generating code
+  2 of 16 functions (12.5%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  RDBY_CLIENT.vcxproj -> C:\RDBY\RDBY_CLIENT\x64\Release\RDBY_CLIENT.exe

@@ -6,32 +6,27 @@ void end_function(SOCKET socket, const char* msg) {
 	closesocket(socket);
 }
 
-void convertPacketToINPUT(char* buffer, INPUT* input)
+void convertPacketToINPUT(char* buffer, INPUT* input, float ratios[])
 {
 	KEYBDINPUT* pKi = &input[0].ki;
 	MOUSEINPUT* pMi = &input[0].mi;
 	BYTE i = 0;
 
 	input[0].type = 0;
-	pMi->dwExtraInfo = NULL;
-	pMi->dwFlags = 0;
-	pMi->dx = 0;
-	pMi->dy = 0;
-	pMi->mouseData = 0;
-	pMi->time = 0;
 
-	pKi->dwExtraInfo = NULL;
-	pKi->dwFlags = 0;
-	pKi->time = 0;
-	pKi->wScan = 0;
-	pKi->wVk = 0;
+
+
 	for (i; i < 4; i++) {
 		input[0].type = (input[0].type << (sizeof(char) * 8)) | buffer[i];
 	}
 
 	if (input[0].type == 1) {
 		//KEYBOARD
-
+		/*pKi->dwExtraInfo = NULL;
+		pKi->dwFlags = 0;
+		pKi->time = 0;
+		pKi->wScan = 0;
+		pKi->wVk = 0;*/
 		for (i; i < 8; i++) {
 			pKi->wVk = (pKi->wVk << (sizeof(char) * 8)) | buffer[i];
 		}
@@ -47,6 +42,11 @@ void convertPacketToINPUT(char* buffer, INPUT* input)
 	}
 	else if (input[0].type == 0) {
 		//MOUSE
+		/*pMi->dwFlags = 0;
+		pMi->dx = 0;
+		pMi->dy = 0;
+		pMi->mouseData = 0;
+		pMi->time = 0;*/
 
 		for (i; i < 8; i++) {
 			pMi->dx = (pMi->dx << (sizeof(char) * 8)) | buffer[i];
@@ -60,7 +60,10 @@ void convertPacketToINPUT(char* buffer, INPUT* input)
 		for (i; i < 20; i++) {
 			pMi->mouseData = (pMi->mouseData << (sizeof(char) * 8)) | buffer[i];
 		}
-
+		if (pMi->dx)
+			pMi->dx = ((pMi->dx = (LONG)(pMi->dx * ratios[0] * ratios[2])) != 0) ? pMi->dx : 1;
+		if (pMi->dy)
+			pMi->dy = ((pMi->dy = (LONG)(pMi->dy * ratios[1] * ratios[2])) != 0) ? pMi->dy : 1;
 
 	}
 
@@ -71,15 +74,33 @@ DWORD WINAPI client_handler(LPVOID data) {
 	clientPtr client = (clientPtr)data;
 	SOCKET socket = client->socket;
 	free(client);
-	char buffer[MAX_REQ_SIZE] = { 0 };
-	int valread = 0;
-	INPUT input[1] = { 0 };
-	while ((valread = recv(socket, buffer, MAX_REQ_SIZE, 0)) > 0) {
-		convertPacketToINPUT(buffer, input);
-		int rd = SendInput(ARRAYSIZE(input), input, sizeof(INPUT));
-		MOUSEINPUT* pMi = &input[0].mi;
 
-		fprintf(stdout, "%d %d %d %d\n", pMi->dx, pMi->dy, pMi->dwFlags, pMi->mouseData);
+	INPUT input[1] = { 0 };
+	KEYBDINPUT* pKi = &input[0].ki;
+	MOUSEINPUT* pMi = &input[0].mi;
+	char buffer[MAX_REQ_SIZE] = { 0 };
+
+	int valread = 0;
+	int client_metrics[3] = { 0 }; // 0 - x, 1 - y
+
+	valread = recv(socket, (char*)client_metrics, 3 * sizeof(int), 0);
+
+	int width = GetSystemMetrics(SM_CXSCREEN); 	//get primary screen's width and height.
+	int height = GetSystemMetrics(SM_CYSCREEN);
+	UINT dpi = GetDpiForSystem();
+	fprintf(stdout, "%d %d %d\n", client_metrics[0], client_metrics[1], client_metrics[2]);
+
+	float w_ratio = ((float)client_metrics[0] / width);
+	float h_ratio = ((float)client_metrics[1] / height);
+	float dpi_ratio = ((float)client_metrics[2] / dpi);
+	float ratios[3] = { w_ratio,h_ratio,dpi_ratio };
+	fprintf(stdout, "%f %f %f", w_ratio, h_ratio, dpi_ratio);
+
+	while ((valread = recv(socket, buffer, MAX_REQ_SIZE, 0)) > 0) {
+		convertPacketToINPUT(buffer, input, ratios);
+		valread = SendInput(1, input, 40);
+
+		/*fprintf(stdout, "%d %d %d %d\n", pMi->dx, pMi->dy, pMi->dwFlags, pMi->mouseData);*/
 
 	}
 	fprintf(stdout, "%s", buffer);
@@ -102,7 +123,7 @@ int main(int argc, char** argv) {
 	struct addrinfo* server_addr = NULL, // the server's address info struct, that holds all info about the address.
 		hints; // used to set the socket's behavior and address.
 
-	ZeroMemory(&hints, sizeof(hints));	
+	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET; // set internet family.
 	hints.ai_socktype = SOCK_STREAM; //set socket type. We use TCP so we set it to sock_stream.
 	hints.ai_protocol = IPPROTO_TCP;
