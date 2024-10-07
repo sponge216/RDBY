@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <ws2def.h>
-#include <string.h>
+ #include <string.h>
 #include <math.h>
 #include <WinUser.h>
 #include <Windows.h>
@@ -28,6 +27,30 @@ typedef struct client {
 	SOCKET socket;
 
 }client_t, * clientPtr;
+
+// struct for mouse-movement events.
+typedef struct mouse_data {
+	LONG dx; // delta x
+	LONG dy; // delta y
+	DWORD mouse_flags;
+	DWORD mouse_data;
+}mouse_data_t, * pmouse_data;
+
+//struct for keyboard press/release events.
+typedef struct keyboard_data {
+	DWORD vkCode;
+	DWORD keyboard_flags;
+}keyboard_data_t, * pkeyboard_data;
+
+typedef struct packet_data {
+	DWORD type;
+
+	union {
+		keyboard_data_t kbd_data;
+		mouse_data_t ms_data;
+	} DUMMYUNIONNAME;
+
+}packet_data_t, * ppacket_data;
 
 typedef struct queue_cell {
 	void* lParam; // struct pointer

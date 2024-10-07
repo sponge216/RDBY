@@ -6,19 +6,13 @@ void end_function(SOCKET socket, const char* msg) {
 	closesocket(socket);
 }
 
-void convertPacketToINPUT(char* buffer, INPUT* input, float ratios[])
+void convertPacketToINPUT(packet_data_t packet, INPUT* input, float ratios[])
 {
 	KEYBDINPUT* pKi = &input[0].ki;
 	MOUSEINPUT* pMi = &input[0].mi;
 	BYTE i = 0;
 
-	input[0].type = 0;
-
-
-
-	for (i; i < 4; i++) {
-		input[0].type = (input[0].type << (sizeof(char) * 8)) | buffer[i];
-	}
+	input[0].type = packet.type;
 
 	if (input[0].type == 1) {
 		//KEYBOARD
@@ -27,13 +21,10 @@ void convertPacketToINPUT(char* buffer, INPUT* input, float ratios[])
 		pKi->time = 0;
 		pKi->wScan = 0;
 		pKi->wVk = 0;*/
-		for (i; i < 8; i++) {
-			pKi->wVk = (pKi->wVk << (sizeof(char) * 8)) | buffer[i];
-		}
 
-		for (i; i < 12; i++) {
-			pKi->dwFlags = (pKi->dwFlags << (sizeof(char) * 8)) | buffer[i];
-		}
+		pKi->time = 0;
+		pKi->wVk = packet.kbd_data.vkCode;
+		pKi->dwFlags = packet.kbd_data.keyboard_flags;
 		pKi->wScan = MapVirtualKeyA(pKi->wVk, MAPVK_VK_TO_VSC);
 		fprintf(stdout, "%l %l %l\n",
 			pKi->wScan,
@@ -48,22 +39,22 @@ void convertPacketToINPUT(char* buffer, INPUT* input, float ratios[])
 		pMi->mouseData = 0;
 		pMi->time = 0;*/
 
-		for (i; i < 8; i++) {
-			pMi->dx = (pMi->dx << (sizeof(char) * 8)) | buffer[i];
-		}
-		for (i; i < 12; i++) {
-			pMi->dy = (pMi->dy << (sizeof(char) * 8)) | buffer[i];
-		}
-		for (i; i < 16; i++) {
-			pMi->dwFlags = (pMi->dwFlags << (sizeof(char) * 8)) | buffer[i];
-		}
-		for (i; i < 20; i++) {
-			pMi->mouseData = (pMi->mouseData << (sizeof(char) * 8)) | buffer[i];
-		}
-		if (pMi->dx)
+		pMi->time = 0;
+		pMi->dx = packet.ms_data.dx;
+		pMi->dy = packet.ms_data.dy;
+		pMi->dwFlags = packet.ms_data.mouse_flags;
+		pMi->mouseData = packet.ms_data.mouse_data;
+
+
+		if (pMi->dx > 0)
 			pMi->dx = ((pMi->dx = (LONG)(pMi->dx * ratios[0] * ratios[2])) != 0) ? pMi->dx : 1;
-		if (pMi->dy)
+		else if (pMi->dx < 0)
+			pMi->dx = ((pMi->dx = (LONG)(pMi->dx * ratios[0] * ratios[2])) != 0) ? pMi->dx : -1;
+
+		if (pMi->dy > 0)
 			pMi->dy = ((pMi->dy = (LONG)(pMi->dy * ratios[1] * ratios[2])) != 0) ? pMi->dy : 1;
+		else if (pMi->dy < 0)
+			pMi->dy = ((pMi->dy = (LONG)(pMi->dy * ratios[1] * ratios[2])) != 0) ? pMi->dy : -1;
 
 	}
 
@@ -78,11 +69,13 @@ DWORD WINAPI client_handler(LPVOID data) {
 	INPUT input[1] = { 0 };
 	KEYBDINPUT* pKi = &input[0].ki;
 	MOUSEINPUT* pMi = &input[0].mi;
-	char buffer[MAX_REQ_SIZE] = { 0 };
+	packet_data_t packet = { 0 };
 
 	int valread = 0;
 	int client_metrics[3] = { 0 }; // 0 - x, 1 - y
-
+	float w_ratio = 1;
+	float h_ratio = 1;
+	float dpi_ratio = 1;
 	valread = recv(socket, (char*)client_metrics, 3 * sizeof(int), 0);
 
 	int width = GetSystemMetrics(SM_CXSCREEN); 	//get primary screen's width and height.
@@ -90,20 +83,25 @@ DWORD WINAPI client_handler(LPVOID data) {
 	UINT dpi = GetDpiForSystem();
 	fprintf(stdout, "%d %d %d\n", client_metrics[0], client_metrics[1], client_metrics[2]);
 
-	float w_ratio = ((float)client_metrics[0] / width);
-	float h_ratio = ((float)client_metrics[1] / height);
-	float dpi_ratio = ((float)client_metrics[2] / dpi);
+	if (width != client_metrics[0])
+		w_ratio = (width / (float)client_metrics[0]);
+
+	if (height != client_metrics[1])
+		h_ratio = (height / (float)client_metrics[1]);
+
+	if (dpi != client_metrics[2])
+		dpi_ratio = (dpi / (float)client_metrics[2]);
+
 	float ratios[3] = { w_ratio,h_ratio,dpi_ratio };
 	fprintf(stdout, "%f %f %f", w_ratio, h_ratio, dpi_ratio);
 
-	while ((valread = recv(socket, buffer, MAX_REQ_SIZE, 0)) > 0) {
-		convertPacketToINPUT(buffer, input, ratios);
+	while ((valread = recv(socket, (char*)&packet, sizeof(packet_data_t), 0)) > 0) {
+		convertPacketToINPUT(packet, input, ratios);
 		valread = SendInput(1, input, 40);
 
 		/*fprintf(stdout, "%d %d %d %d\n", pMi->dx, pMi->dy, pMi->dwFlags, pMi->mouseData);*/
 
 	}
-	fprintf(stdout, "%s", buffer);
 	end_function(socket, "RECV FAILED");
 	fprintf(stdout, "%d\n", valread);
 	ExitThread(1);

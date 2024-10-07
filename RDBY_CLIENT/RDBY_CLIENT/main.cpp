@@ -66,8 +66,10 @@ void ReleaseMouseHook()
 DWORD WINAPI socket_output_thread(LPVOID data) {
 	unsigned char buffer[PACKET_SIZE] = { 0 };
 	queue_cell_t cell = { 0 };
+	packet_data_t packet = { 0 };
 	BYTE res = 0;
 	DWORD timeout = 3;
+	DWORD flags = 0;
 	while (run) {
 		while (res = popFromQueue(proc_queue, &cell, timeout)) {
 
@@ -82,13 +84,10 @@ DWORD WINAPI socket_output_thread(LPVOID data) {
 			first_point->x = tempx;
 			first_point->y = tempy;
 
-			DWORD flags = MOUSEEVENTF_MOVE; // default event is moving.
+			flags = MOUSEEVENTF_MOVE; // default event is moving.
 			//fprintf(stdout, "%x", wParam);
 			switch (cell.wParam) {
-			case WM_MOUSEMOVE:
-				flags = MOUSEEVENTF_MOVE;
-				//fprintf(stdout, "MOVE");
-				break;
+
 			case WM_LBUTTONDOWN:
 				//fprintf(stdout, "LEFT DOWN!");
 				flags = MOUSEEVENTF_LEFTDOWN;
@@ -115,20 +114,47 @@ DWORD WINAPI socket_output_thread(LPVOID data) {
 			}
 
 
-			packetFormatMouse(pMsStruct, buffer, flags);
-			send(connectSocket, (char*)buffer, PACKET_SIZE, 0); // send keystroke.
+			packet.type = 0;
+			packet.ms_data = { pMsStruct->pt.x, pMsStruct->pt.y, flags, pMsStruct->mouseData };
 		}
 		else if (cell.type == 1) {
 			KBDLLHOOKSTRUCT* pKbdStruct = (KBDLLHOOKSTRUCT*)(cell.lParam);
-			packetFormatKeyboard(pKbdStruct, buffer);
+			/* check if extended key
+			 if (kbStruct->vkCode == VK_RIGHT || kbStruct->vkCode == VK_INSERT ||
+				kbStruct->vkCode == VK_DELETE || kbStruct->vkCode == VK_HOME ||
+				kbStruct->vkCode == VK_END || kbStruct->vkCode == VK_NEXT ||
+				kbStruct->vkCode == VK_PRIOR || kbStruct->vkCode == VK_RALT ||
+				kbStruct->vkCode == VK_RCONTROL)
+			*/
+			switch (cell.wParam) {
+			case WM_KEYDOWN:
+				flags = 0;
+				break;
 
-			send(connectSocket, (char*)buffer, PACKET_SIZE - 2 * sizeof(DWORD), 0); // send keystroke.
+			case WM_SYSKEYDOWN:
+				flags = 0;
+				break;
+
+			case WM_KEYUP:
+				flags = KEYEVENTF_KEYUP;
+				break;
+
+			case WM_SYSKEYUP:
+				flags = KEYEVENTF_KEYUP;
+				break;
+
+			}
+			packet.type = 1;
+			packet.kbd_data = { pKbdStruct->vkCode,flags };
+			fprintf(stdout, "PRESSED");
 		}
+		send(connectSocket, (char*)&packet, sizeof(packet_data_t), 0); // send keystroke.
+
 	}
 	ExitThread(1);
 	return NULL;
 }
-//Mouse callback function. Called when a keyboard input event is raised.
+//Mouse callback function. Called when a mouse input event is raised.
 LRESULT __stdcall MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode >= 0)
@@ -149,7 +175,7 @@ LRESULT __stdcall KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode >= 0)
 	{
-		queue_cell_t cell = { (void*)lParam,wParam,0 };
+		queue_cell_t cell = { (void*)lParam,wParam,1 };
 		pushToQueue(proc_queue, cell);
 
 	}
@@ -197,16 +223,8 @@ void firstInteraction() {
 
 }
 int main(int argc, char** argv) {
-	/*LONG test = -12345;
-	LONG temp = 0;
-	unsigned char buffer[4] = { 0 };
-	for (int i = 0; i < 4; i++) {
-		buffer[i] = (test >> (sizeof(char) * 8 * (3 - i % 4))) & 0xff;
-	}
-	for (int i = 0; i < 4; i++) {
-		temp = (temp << (sizeof(char) * 8)) | buffer[i];
-	}
-	fprintf(stdout, "%d %d", test, temp);*/
+
+
 	//----------------------
    // Initialize Winsock
 
